@@ -3,8 +3,8 @@ from datetime import datetime
 
 class ExpenseRequest(BaseModel):
     amount: float
-    category: str
     description: str
-    source: str
-    merchant: str
+    category: int
+    source: int
+    merchant: int
     transaction_date: datetime
