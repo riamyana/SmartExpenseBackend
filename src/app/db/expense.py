@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from database import Base
+from sqlalchemy import Column, ForeignKey, Integer, String, Float, DateTime
+from app.database import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
 
@@ -10,9 +10,9 @@ class Expense(Base):
     transaction_date = Column(DateTime)
     amount = Column(Float)
     description = Column(String)
-    category_id = Column(Integer, ForeignKey=("category.id"), nullable=True)
-    source_id = Column(Integer, ForeignKey=("source.id"), nullable=True)
-    merchant_id = Column(Integer, ForeignKey=("merchant.id"), nullable=True)
+    category_id = Column(Integer, ForeignKey("category.id"), nullable=True)
+    source_id = Column(Integer, ForeignKey("source.id"), nullable=True)
+    merchant_id = Column(Integer, ForeignKey("merchant.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     time_stamp = Column(DateTime, default=datetime.utcnow)
 
