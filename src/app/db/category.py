@@ -1,13 +1,13 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
-from database import Base
+from app.database import Base
 from datetime import datetime
 
 class Category(Base):
     __tablename__ = "category"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(DateTime)
+    name = Column(String)
     description = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 

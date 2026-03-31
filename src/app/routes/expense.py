@@ -2,15 +2,15 @@ from datetime import datetime
 from io import StringIO
 
 from fastapi import APIRouter, UploadFile, File
-from models.expense import ExpenseRequest
-from db.expense import Expense
-from database import SessionLocal
+from app.models.expense import ExpenseModel
+from app.db.expense import Expense
+from app.database import SessionLocal
 import csv
 
 router = APIRouter()
 
 @router.post("/expenses")
-def add_expense(expense: ExpenseRequest):
+def add_expense(expense: ExpenseModel):
     db = SessionLocal()
 
     new_expense = Expense(
@@ -68,3 +68,53 @@ def upload_csv(file: UploadFile = File(...)):
     db.commit()
 
     return {"message": "CSV uploaded", "count": len(expenses)}
+
+@router.get("/expenses/yearly")
+def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):
+    db = SessionLocal()
+
+    start_date = datetime(year, 1, 1)
+    end_date = datetime(year + 1, 1, 1)
+
+    offset = (page - 1) * limit
+
+    expenses = (
+        db.query(Expense)
+        .filter(
+            Expense.transaction_date >= start_date,
+            Expense.transaction_date < end_date
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    
+    data = [
+        ExpenseModel(
+            id=e.id,
+            transaction_date=e.transaction_date,
+            amount=e.amount,
+            description=e.description,
+            # TODO: Update Foreign keys for category, source, merchant, etc.
+            category=None,
+            source=None,
+            merchant=None
+        )
+        for e in expenses
+    ]
+    
+    total = (
+        db.query(Expense)
+        .filter(
+            Expense.transaction_date >= start_date,
+            Expense.transaction_date < end_date
+        )
+        .count()
+    )
+
+    return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "data": data
+    }
