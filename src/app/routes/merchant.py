@@ -6,12 +6,12 @@ from app.database import SessionLocal
 router = APIRouter()
 
 @router.post("/merchant")
-def add_merchant(merchant: MerchantModel):
+def add_merchant(merchantRequest: MerchantModel):
     db = SessionLocal()
 
     merchant = Merchant(
-        name=merchant.name,
-        description=merchant.description
+        name=merchantRequest.name,
+        description=merchantRequest.description
     )
 
     db.add(merchant)

@@ -12,3 +12,4 @@ class Category(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     expenses = relationship("Expense", back_populates="category")
+    budgets = relationship("Budget", back_populates="budgets")
