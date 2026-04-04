@@ -1,7 +1,7 @@
 from datetime import datetime
 from io import StringIO
 
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.models.expense import ExpenseModel
 from app.db.expense import Expense
 from app.database import SessionLocal
@@ -30,7 +30,7 @@ def add_expense(expense: ExpenseModel):
     return new_expense
 
 @router.get("/expenses/{id}")
-def get_expense(id: int):
+def get_expense_by_id(id: int):
     db = SessionLocal()
     try:
         expense = db.get(Expense, id)
@@ -39,6 +39,45 @@ def get_expense(id: int):
             return {"error": "Expense not found"}
 
         return expense
+    finally:
+        db.close()
+
+@router.delete("/expenses/{id}")
+def delete_expense_by_id(id: int):
+    db = SessionLocal()
+    try:
+        expense = db.get(Expense, id)
+
+        if not expense:
+            return {"error": "Expense not found"}
+
+        db.delete(expense)
+        db.commit()
+
+        return {"message": "Expense deleted successfully"}
+    finally:
+        db.close()
+
+@router.put("/expenses/{id}")
+def update_expense_by_id(id: int, expenseRequest: ExpenseModel):
+    db = SessionLocal()
+    try:
+        expense = db.get(Expense, id)
+
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
+
+        expense.transaction_date = expenseRequest.transaction_date
+        expense.amount = expenseRequest.amount
+        expense.description = expenseRequest.description
+        expense.category_id = expenseRequest.category_id
+        expense.source_id = expenseRequest.source_id
+        expense.merchant_id = expenseRequest.merchant_id
+
+        db.commit()
+        db.refresh(expense)
+
+        return {"message": "Expense updated successfully", "expense": expense}
     finally:
         db.close()
 
@@ -96,8 +135,8 @@ def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):
             amount=e.amount,
             description=e.description,
             # TODO: Update Foreign keys for category, source, merchant, etc.
-            category=None,
-            source=None,
+            category_id=None,
+            source_id=None,
             merchant=None
         )
         for e in expenses

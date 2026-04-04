@@ -7,12 +7,12 @@ from app.db.source import Source
 router = APIRouter()
 
 @router.post("/source")
-def add_source(source: SourceModel):
+def add_source(sourceRequest: SourceModel):
     db = SessionLocal()
 
     source = Source(
-        name=source.name,
-        description=source.description
+        name=sourceRequest.name,
+        description=sourceRequest.description
     )
 
     db.add(source)

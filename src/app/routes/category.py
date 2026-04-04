@@ -7,12 +7,12 @@ from app.models.category import CategoryModel
 router = APIRouter()
 
 @router.post("/category")
-def add_category(category: CategoryModel):
+def add_category(categoryRequest: CategoryModel):
     db = SessionLocal()
 
     new_category = Category(
-        name=category.name,
-        description=category.description
+        name=categoryRequest.name,
+        description=categoryRequest.description
     )
 
     db.add(new_category)
