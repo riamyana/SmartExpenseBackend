@@ -16,7 +16,7 @@ In VS Code:
 - pip install -r requirements.txt
 
 # To run FastApi (in /src path):
-- uvicorn app:main:app
+- uvicorn app.main:app
 
 # To view docs of api
 - http://127.0.0.1:8000/docs

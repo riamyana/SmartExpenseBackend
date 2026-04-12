@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.db.database import Base
 from datetime import datetime
 
 class Category(Base):
@@ -12,4 +12,4 @@ class Category(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     expenses = relationship("Expense", back_populates="category")
-    budgets = relationship("Budget", back_populates="budgets")
+    budgets = relationship("Budget", back_populates="category")

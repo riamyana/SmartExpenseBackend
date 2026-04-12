@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.database import SessionLocal
+from app.db.database import SessionLocal
 
 from app.db.category import Category
 from app.models.category import CategoryModel

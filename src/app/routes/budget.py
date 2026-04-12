@@ -1,39 +1,31 @@
-from fastapi import APIRouter
-from app.database import SessionLocal
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
+from app.db.database import SessionLocal, get_db
 
 from app.db.budget import Budget
 from app.models.budget import BudgetModel
+from sqlalchemy.orm import Session
+
+from app.handlers.budgets.budget_factory import get_budget_handler
+from app.handlers.budgets.budget_base import BudgetBase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/budget")
-def add_budget(budgetRequest: BudgetModel):
-    db = SessionLocal()
+def add_budget(budgetRequest: BudgetModel, session: Session = Depends(get_db)):
+    handler = get_budget_handler(session, budgetRequest)
 
-    # Todo: start tomorrow from here. Check if budget is categorical or not. Write logic accordingly.
+    logger.info(f"Executing {handler.description}.")
+
+    response = handler.execute()
     
-    # Note: A global budget can be either categorical or non-categorical. Can not save both in the same time for simplicity.
-    if budgetRequest.is_categorical:
-        pass
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.message)
 
-    if budgetRequest.is_recurring:
-        existing = db.query(Budget).filter(Budget.is_recurring == True, Budget.category_id == budgetRequest.category_id).first()
-
-        if existing:
-            if existing.category_id is not None and existing.category_id > 0:
-                pass
-
-    budget = Budget(
-        amount=budgetRequest.amount,
-        month=budgetRequest.month,
-        is_recurring=budgetRequest.is_recurring
-    )
-
-    db.add(budget)
-    db.commit()
-    db.refresh(budget)
-
-    return budget
+    return response.id
 
 @router.get("/budget/{id}")
 def get_budget_by_id(id: int):

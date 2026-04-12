@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.db.merchant import Merchant
 from app.models.merchant import MerchantModel
-from app.database import SessionLocal
+from app.db.database import SessionLocal
 
 router = APIRouter()
 

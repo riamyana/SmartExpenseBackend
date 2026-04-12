@@ -4,7 +4,7 @@ from io import StringIO
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.models.expense import ExpenseModel
 from app.db.expense import Expense
-from app.database import SessionLocal
+from app.db.database import SessionLocal
 import csv
 
 router = APIRouter()
