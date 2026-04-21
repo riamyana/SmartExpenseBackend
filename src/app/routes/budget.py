@@ -12,9 +12,9 @@ from app.handlers.budgets.budget_base import BudgetBase
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/budget", tags=["Budgets"])
 
-@router.post("/budget")
+@router.post("")
 def add_budget(budgetRequest: BudgetModel, session: Session = Depends(get_db)):
     handler = get_budget_handler(session, budgetRequest)
 
@@ -27,7 +27,7 @@ def add_budget(budgetRequest: BudgetModel, session: Session = Depends(get_db)):
 
     return response.id
 
-@router.get("/budget/{id}")
+@router.get("/{id}")
 def get_budget_by_id(id: int):
     db = SessionLocal()
     try:

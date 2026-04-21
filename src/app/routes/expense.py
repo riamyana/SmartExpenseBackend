@@ -7,9 +7,9 @@ from app.db.expense import Expense
 from app.db.database import SessionLocal
 import csv
 
-router = APIRouter()
+router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
-@router.post("/expenses")
+@router.post("")
 def add_expense(expense: ExpenseModel):
     db = SessionLocal()
 
@@ -29,7 +29,7 @@ def add_expense(expense: ExpenseModel):
 
     return new_expense
 
-@router.get("/expenses/{id}")
+@router.get("/{id}")
 def get_expense_by_id(id: int):
     db = SessionLocal()
     try:
@@ -42,7 +42,7 @@ def get_expense_by_id(id: int):
     finally:
         db.close()
 
-@router.delete("/expenses/{id}")
+@router.delete("/{id}")
 def delete_expense_by_id(id: int):
     db = SessionLocal()
     try:
@@ -58,7 +58,7 @@ def delete_expense_by_id(id: int):
     finally:
         db.close()
 
-@router.put("/expenses/{id}")
+@router.put("/{id}")
 def update_expense_by_id(id: int, expenseRequest: ExpenseModel):
     db = SessionLocal()
     try:
@@ -108,7 +108,7 @@ def upload_csv(file: UploadFile = File(...)):
 
     return {"message": "CSV uploaded", "count": len(expenses)}
 
-@router.get("/expenses/yearly")
+@router.get("/yearly")
 def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):
     db = SessionLocal()
 

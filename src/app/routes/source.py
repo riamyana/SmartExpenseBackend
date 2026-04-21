@@ -4,9 +4,9 @@ from app.db.database import SessionLocal
 from app.models.source import SourceModel
 from app.db.source import Source
 
-router = APIRouter()
+router = APIRouter(prefix="/source", tags=["Source"])
 
-@router.post("/source")
+@router.post("")
 def add_source(sourceRequest: SourceModel):
     db = SessionLocal()
 
@@ -21,7 +21,7 @@ def add_source(sourceRequest: SourceModel):
 
     return source
 
-@router.get("/source/{id}")
+@router.get("/{id}")
 def get_source_by_id(id: int):
     db = SessionLocal()
     try:

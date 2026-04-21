@@ -3,9 +3,9 @@ from app.db.merchant import Merchant
 from app.models.merchant import MerchantModel
 from app.db.database import SessionLocal
 
-router = APIRouter()
+router = APIRouter(prefix="/merchant", tags=["Merchant"])
 
-@router.post("/merchant")
+@router.post("")
 def add_merchant(merchantRequest: MerchantModel):
     db = SessionLocal()
 
@@ -20,7 +20,7 @@ def add_merchant(merchantRequest: MerchantModel):
 
     return merchant
 
-@router.get("/merchant/{id}")
+@router.get("/{id}")
 def get_merchant_by_id(id: int):
     db = SessionLocal()
     try:
