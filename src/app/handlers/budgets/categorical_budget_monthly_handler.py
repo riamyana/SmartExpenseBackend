@@ -25,4 +25,4 @@ class CategoricalBudgetMonthly(BudgetBase):
 
     @property
     def description(self):
-        self.logger.debug("Categorical Budget Monthly")
+        return "Categorical Budget Monthly"

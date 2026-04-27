@@ -22,4 +22,4 @@ class TotalBudgetRecurring(BudgetBase):
 
     @property
     def description(self):
-        self.logger.debug("Total Budget Recurring")
+        return "Total Budget Recurring"

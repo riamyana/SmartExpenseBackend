@@ -1,11 +1,20 @@
 from datetime import datetime
 from io import StringIO
+import logging
+from typing import List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from app.handlers.statements.statement_base import StatementModel
+from app.handlers.statements.statement_factory import get_statement_handler
 from app.models.expense import ExpenseModel
 from app.db.expense import Expense
-from app.db.database import SessionLocal
+from app.db.database import SessionLocal, get_db
 import csv
+from sqlalchemy.orm import Session
+
+from app.models.transactions import TransactionModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
@@ -107,6 +116,27 @@ def upload_csv(file: UploadFile = File(...)):
     db.commit()
 
     return {"message": "CSV uploaded", "count": len(expenses)}
+
+@router.post("/statements/upload", response_model=List[TransactionModel])
+def upload_statements(file: UploadFile = File(...), session: Session = Depends(get_db)):
+    request = StatementModel(
+        file = file
+    )
+    handler = get_statement_handler(session, request)
+
+    logger.info(f"Executing {handler.description}.")
+
+    response = handler.process()
+
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.message)
+
+    return response.transactions
+
+# @router.post("/statements/confirm")
+# def confirm_import(data: List[TransactionModel]):
+#     # save to DB
+#     return {"success": True}
 
 @router.get("/yearly")
 def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):

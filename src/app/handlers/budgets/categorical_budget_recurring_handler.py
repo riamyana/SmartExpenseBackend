@@ -25,4 +25,4 @@ class CategoricalBudgetRecurring(BudgetBase):
 
     @property
     def description(self):
-        self.logger.debug("Categorical Budget Recurring")
+        return "Categorical Budget Recurring"
