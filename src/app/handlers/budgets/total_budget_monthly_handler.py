@@ -22,4 +22,4 @@ class TotalBudgetMonthly(BudgetBase):
     
     @property
     def description(self):
-        self.logger.debug("Total Budget Monthly")
+        return "Total Budget Monthly"
