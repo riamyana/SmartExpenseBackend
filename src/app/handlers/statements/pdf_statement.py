@@ -53,7 +53,13 @@ class PDFStatement(StatementBase):
         print(df.head())
         records = df.to_dict(orient="records")
 
-        transactions = [TransactionModel(**row) for row in records]
+        transactions = [
+            TransactionModel(
+                id=i,
+                **row
+            )
+            for i, row in enumerate(records)
+        ]
         print(records)
         
         
