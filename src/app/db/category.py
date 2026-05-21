@@ -9,6 +9,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     description = Column(String)
+    is_system = Column(Integer, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     expenses = relationship("Expense", back_populates="category")

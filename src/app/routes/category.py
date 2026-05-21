@@ -13,7 +13,8 @@ router = APIRouter(prefix="/category", tags=["Categories"])
 def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_db)):
     new_category = Category(
         name=categoryRequest.name,
-        description=categoryRequest.description
+        description=categoryRequest.description,
+        is_system=0
     )
 
     session.add(new_category)
@@ -23,7 +24,7 @@ def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_
     return new_category
 
 @router.get("/{id}")
-def delete_category_by_id(id: int, session: Session = Depends(get_db)):
+def get_category_by_id(id: int, session: Session = Depends(get_db)):
     category = session.get(Category, id)
 
     if not category:
@@ -42,7 +43,8 @@ def get_all_category(session: Session = Depends(get_db)):
         CategoryModel(
             id=c.id,
             name=c.name,
-            description=c.description
+            description=c.description,
+            is_system=c.is_system
         )
         for c in categories
     ]
@@ -53,6 +55,9 @@ def delete_category_by_id(id: int, session: Session = Depends(get_db)):
 
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    if category.is_system == True:
+        raise HTTPException(status_code=402, detail="System categories cannot be deleted")
 
     session.delete(category)
     session.commit()
@@ -65,6 +70,9 @@ def update_category_by_id(id: int, categoryRequest: CategoryModel, session: Sess
 
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    if category.is_system == True:
+        raise HTTPException(status_code=402, detail="System categories cannot be updated")
 
     category.name = categoryRequest.name
     category.description = categoryRequest.description
