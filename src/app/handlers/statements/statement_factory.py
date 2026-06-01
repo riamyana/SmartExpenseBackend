@@ -2,6 +2,7 @@ import os
 
 from sqlalchemy.orm import Session
 from app.handlers.statements.pdf_statement import PDFStatement
+from app.handlers.statements.pdf_statement_play import PDFStatementPlay
 from app.handlers.statements.statement_base import StatementBase, StatementModel
 
 
@@ -12,7 +13,8 @@ def get_statement_handler(session: Session, request: StatementModel) -> Statemen
     key = filename.split(".")[-1].lower()
 
     handler_map = {
-        "pdf": PDFStatement(session, request),
+        # "pdf": PDFStatement(session, request),
+        "pdf": PDFStatementPlay(session, request),
         "csv": NotImplementedError(),
         "xls": NotImplementedError(),
     }
