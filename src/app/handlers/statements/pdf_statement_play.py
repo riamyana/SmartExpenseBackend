@@ -1,12 +1,15 @@
 from collections import defaultdict
 import re
 import tempfile
+from math import inf
 
 from fastapi import HTTPException
 import pandas as pd
 import pdfplumber
 import fitz
 from dateutil.parser import parse
+
+from datetime import datetime
 
 from app.db.category import Category
 from app.handlers.statements.statement_base import StatementBase, StatementResponse
@@ -15,6 +18,15 @@ from app.models.transactions import TransactionModel
 
 
 class PDFStatementPlay(StatementBase):
+    DATE_PATTERN = re.compile(
+        r"\b(?:"
+        r"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|"
+        r"\d{4}[/-]\d{1,2}[/-]\d{1,2}|"
+        r"\d{1,2}[-\s](?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-\s]\d{2,4}"
+        r")\b",
+        re.IGNORECASE,
+    )
+
     COLUMN_RANGES = {
         "serial": (20, 50),
         "txn_date": (50, 100),
@@ -121,103 +133,193 @@ class PDFStatementPlay(StatementBase):
         #         column_ranges = self.build_column_ranges(header_block)
         #         print(column_ranges)
         
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        #     tmp.write(self.request.file.file.read())
+        #     tmp_path = tmp.name
+        #     print(f"Saved uploaded file to {tmp_path}")
+            
+        #     doc = fitz.open(tmp_path)
+
+        #     for page in doc:
+        #         words = page.get_text("words")
+
+        #         header_block = self.detect_header_block(words)
+
+        #         if not header_block:
+        #             continue
+
+        #         break
+        
+        # print('header_block:\n', header_block)
+
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp:
+        #     temp.write(self.request.file.file.read())
+        #     tmp_path = tmp.name
+        #     print(f"Saved uploaded file to {tmp_path}")
+            
+        #     doc = fitz.open(tmp_path)
+
+        #     for page in doc:
+        #         words = page.get_text("words")
+
+        #         group = self.group_by_line(words)
+        #         merged_groups = self.merge_same_x0_groups(group)
+
+        #         # todo: we need to someting to identify rows from header block. maybe we can use y coordinate of header block to filter rows below it.
+        #         print("\n\n")
+        #         print(merged_groups)
+                
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(self.request.file.file.read())
             tmp_path = tmp.name
-            print(f"Saved uploaded file to {tmp_path}")
-            
-            doc = fitz.open(tmp_path)
 
-            all_transactions = []
+        doc = fitz.open(tmp_path)
 
-            # for page in doc:
+        header_block = None
+        header_bottom_y = None
+        header_page_no = None
 
-            #     words = page.get_text("words")
+        # FIND HEADER ONCE
 
-            #     grouped = defaultdict(list)
+        for page_no, page in enumerate(doc):
 
-            #     # GROUP BY BLOCK
+            words = page.get_text("words")
 
-            #     for word in words:
+            header_block = self.detect_header_block(words)
 
-            #         block_no = word[5]
+            if header_block:
 
-            #         grouped[block_no].append(word)
+                column_ranges = self.build_column_ranges(
+                    header_block
+                )
 
-            #     # PROCESS BLOCKS
+                date_range = None
 
-            #     for block_no, block_words in grouped.items():
+                for column_name, column_range in column_ranges.items():
 
-            #         if not self.is_transaction(block_words):
-            #             continue
+                    # I think this is not usesful
+                    if "date" in column_name.lower():
 
-            #         transaction = {
-            #             "serial": "",
-            #             "txn_date": "",
-            #             "value_date": "",
-            #             "description": [],
-            #             "debit": "",
-            #             "credit": "",
-            #             "balance": "",
-            #         }
+                        date_range = column_range
+                        break
 
-            #         # SORT LEFT TO RIGHT
+                if date_range is None:
 
-            #         block_words = sorted(
-            #             block_words,
-            #             key=lambda x: (x[1], x[0])
-            #         )
+                    raise ValueError(
+                        "Date column not found in header"
+                    )
 
-            #         for word in block_words:
+                header_page_no = page_no
 
-            #             x0, y0, x1, y1, text, *_ = word
+                header_words = [
+                    word
+                    for group in header_block
+                    for word in group
+                ]
 
-            #             mid_x = (x0 + x1) / 2
-
-            #             column = self.get_column(mid_x)
-
-            #             if not column:
-            #                 continue
-
-            #             if column == "description":
-
-            #                 transaction["description"].append(text)
-
-            #             else:
-
-            #                 if transaction[column]:
-
-            #                     transaction[column] += " " + text
-
-            #                 else:
-
-            #                     transaction[column] = text
-
-            #         transaction["description"] = self.merge_description(
-            #             transaction["description"]
-            #         )
-
-            #         all_transactions.append(transaction)
-
-            # for t in all_transactions:
-                # print(t)
- 
-            for page in doc:
-                words = page.get_text("words")
-
-                header_block = self.detect_header_block(words)
-
-                if not header_block:
-                    continue
-
-                # column_ranges = self.build_column_ranges(
-                #     header_block
-                # )
+                header_bottom_y = max(
+                    word[3]
+                    for word in header_words
+                )
 
                 break
-        
-        print('header_block:\n', header_block)
 
+        if not header_block:
+            raise ValueError("Could not detect statement header")
+
+        print("header_block:\n", header_block)
+        # range = self.build_column_ranges(header_block)
+        print("header_bottom_y:", header_bottom_y)
+        column_ranges = self.normalize_column_ranges(column_ranges)
+        print("\nrange", column_ranges)
+
+        # PROCESS TRANSACTIONS
+
+        record_start_x0 = None
+
+        # todo: real version below
+        records = []
+        for page_no, page in enumerate(doc):
+            words = page.get_text("words")
+
+            # Skip content above header on header page
+            if page_no == header_page_no:
+
+                words = [
+                    word
+                    for word in words
+                    if word[1] > header_bottom_y
+                ]
+
+            grouped = defaultdict(list)
+
+            for word in words:
+                block_no = word[5]
+                grouped[block_no].append(word)
+
+            for block_no, block_words in grouped.items():
+                groups = self.group_by_line(block_words)
+
+                merged_groups = self.merge_same_x0_groups(groups)
+
+                if not merged_groups:
+                    continue
+
+                has_transaction_date = False
+
+                for group in merged_groups:
+                    # print(
+                    #     "\nx0=",
+                    #     group[0][0],
+                    #     "text=",
+                    #     " ".join(str(w[4]) for w in group)
+                    # )
+
+                    first_x0 = group[0][0]
+
+                    # Group must fall inside Date column
+                    # if not (
+                    #     date_range[0]
+                    #     <= first_x0
+                    #     <= date_range[1]
+                    # ):
+                    #     continue
+                    
+                    if not (
+                        column_ranges['transaction_date'][0]
+                        <= first_x0
+                        <= column_ranges['transaction_date'][1]
+                    ):
+                        continue
+
+                    text = " ".join(
+                        str(word[4])
+                        for word in group
+                    ).strip()
+
+                    # print("DATE COLUMN TEXT:", text)
+
+                    if (
+                        self.is_date(text)
+                        or re.search(r"\d{1,2}-\d{1,2}-\d{2,4}", text)
+                        or re.search(r"\d{1,2}/\d{1,2}/\d{2,4}", text)
+                        or re.search(r"\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4}", text)
+                    ):
+                        has_transaction_date = True
+                        break
+
+                if not has_transaction_date:
+                    continue
+
+                # print(f"\nPAGE={page_no} BLOCK={block_no}")
+                # print(merged_groups)
+
+                records.append(merged_groups)
+        doc.close()
+        print("\nrecords length", len(records))
+        print("\nfirst record", records[0] if records else "No records")
+        print("\nlast record", records[-1] if records else "No records")
+        
         block_words = [
             (44.0, 362.28399658203125, 48.472999572753906, 375.1000061035156, '#', 16, 0, 0), 
             (75.18000030517578, 362.28399658203125, 92.75699615478516, 375.1000061035156, 'Date', 16, 1, 0), 
@@ -235,13 +337,197 @@ class PDFStatementPlay(StatementBase):
         # merged_groups = self.merge_same_x0_groups(group)
 
         # print(merged_groups)
+        
+        transactions = []
+
+        id = 0
+        for idx, record in enumerate(records, start=1):
+
+            transaction = self.build_transaction_model(
+                record=record,
+                column_ranges=column_ranges,
+                transaction_id=idx
+            )
+
+            if transaction.transaction_date is not None:
+                transaction.id = id
+                transactions.append(transaction)
+                id += 1
+
+
         response = StatementResponse(
-            transactions=[],
+            transactions=transactions,
             success=True
         )
 
         return response
-    
+
+    def parse_date(self, text):
+        formats = [
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%d-%m-%y",
+            "%d/%m/%y",
+            "%d %b %Y",   # 01 Mar 2026
+            "%d %B %Y",   # 01 March 2026
+        ]
+
+        text = text.strip()
+
+        for fmt in formats:
+
+            try:
+                return datetime.strptime(
+                    text,
+                    fmt
+                ).date()
+
+            except ValueError:
+                continue
+
+        return None
+
+    def build_transaction_model(
+        self,
+        record,
+        column_ranges,
+        transaction_id
+    ):
+
+        data = {
+            "id": transaction_id,
+            "date": None,
+            "category": 0,
+            "description": None,
+            "withdrawal": None,
+            "deposit": None,
+        }
+
+        for group in record:
+
+            if not group:
+                continue
+
+            first_x0 = group[0][0]
+
+            text = " ".join(
+                str(word[4])
+                for word in group
+            ).strip()
+
+            for field_name, (start_x, end_x) in column_ranges.items():
+
+                if not any(
+                    start_x <= word[0] <= end_x
+                    for word in group
+                ):
+                    continue
+
+                if field_name == "transaction_date":
+
+                    try:
+
+                        data["date"] = self.parse_date(text)
+
+                    except Exception:
+
+                        try:
+
+                            data["date"] = datetime.strptime(
+                                text,
+                                "%d/%m/%Y"
+                            ).date()
+
+                        except Exception:
+                            pass
+
+                elif field_name == "description":
+
+                    if data["description"]:
+
+                        data["description"] += " " + text
+
+                    else:
+
+                        data["description"] = text
+
+                elif field_name == "withdrawal":
+
+                    if text and text != "-":
+
+                        try:
+
+                            data["withdrawal"] = float(
+                                text.replace(",", "")
+                            )
+
+                        except Exception:
+                            pass
+
+                elif field_name == "deposit":
+
+                    if text and text != "-":
+
+                        try:
+
+                            data["deposit"] = float(
+                                text.replace(",", "")
+                            )
+
+                        except Exception:
+                            pass
+
+                break
+
+        print('\ndata', data)
+        id = len(data)
+        return TransactionModel(
+            id=id,
+            date=data["date"],
+            category=data["category"],
+            description=data["description"],
+            withdrawal=data["withdrawal"],
+            deposit=data["deposit"],
+        )
+    def normalize_column_ranges(self, column_ranges):
+        normalized = {}
+
+        for header_name, value in column_ranges.items():
+
+            header_lower = header_name.lower()
+
+            if self.contains_keyword(
+                header_lower,
+                DATE_KEYWORDS
+            ):
+                normalized["transaction_date"] = value
+
+            elif self.contains_keyword(
+                header_lower,
+                DESCRIPTION_KEYWORDS
+            ):
+                normalized["description"] = value
+
+            elif self.contains_keyword(
+                header_lower,
+                WITHDRAWAL_KEYWORDS
+            ):
+                normalized["withdrawal"] = value
+
+            elif self.contains_keyword(
+                header_lower,
+                DEPOSIT_KEYWORDS
+            ):
+                normalized["deposit"] = value
+
+            elif self.contains_keyword(
+                header_lower,
+                BALANCE_KEYWORDS
+            ):
+                normalized["balance"] = value
+
+        return normalized
+
     def merge_same_x0_groups(self, groups, tolerance=5):
         result = []
         visited = set()
@@ -417,6 +703,8 @@ class PDFStatementPlay(StatementBase):
 
     #     return None
 
+    def is_date(self, value):
+        return bool(self.DATE_PATTERN.search(str(value)))
 
     def detect_header_block(self, words):
 
@@ -458,65 +746,116 @@ class PDFStatementPlay(StatementBase):
                 return groups
 
         return None
-    def build_column_ranges(self, header_words):
 
-        """
-        Returns:
-        {
-            "date": (50, 100),
-            ...
-        }
-        """
+    # def build_column_ranges(self, header_block):
+    #     column_positions = {}
 
-        if not header_words:
-            return
+    #     for group in header_block:
 
-        column_positions = {}
+    #         text = " ".join(
+    #             str(word[4]).lower()
+    #             for word in group
+    #         )
 
-        # FIND HEADER POSITIONS
+    #         x0 = min(word[0] for word in group)
 
-        for word in header_words:
+    #         for key, keywords in self.KEYWORD_MAP.items():
 
-            x0, y0, x1, y1, text, *_ = word
+    #             if (
+    #                 key not in column_positions
+    #                 and self.contains_keyword(text, keywords)
+    #             ):
+    #                 column_positions[key] = x0
 
-            text_lower = str(text).lower()
+    #     if not column_positions:
+    #         return {}
 
-            for key, keywords in self.KEYWORD_MAP.items():
+    #     sorted_columns = sorted(
+    #         column_positions.items(),
+    #         key=lambda x: x[1]
+    #     )
 
-                if (
-                    key not in column_positions
-                    and self.contains_keyword(text_lower, keywords)
-                ):
+    #     column_ranges = {}
 
-                    column_positions[key] = x0
+    #     for i, (column_name, start_x) in enumerate(sorted_columns):
 
-        # SORT BY X
+    #         if i < len(sorted_columns) - 1:
 
-        sorted_columns = sorted(
-            column_positions.items(),
-            key=lambda x: x[1]
-        )
+    #             end_x = sorted_columns[i + 1][1]
 
-        column_ranges = {}
+    #         else:
 
-        for i, (key, start_x) in enumerate(sorted_columns):
+    #             end_x = start_x + 120
 
-            if i < len(sorted_columns) - 1:
+    #         column_ranges[column_name] = (
+    #             round(start_x),
+    #             round(end_x)
+    #         )
 
-                next_x = sorted_columns[i + 1][1]
+    #     return column_ranges
 
-                end_x = next_x
+    def build_column_ranges(self, header_block):
+
+        columns = []
+
+        for group in header_block:
+
+            text = " ".join(
+                str(word[4]).strip()
+                for word in group
+            )
+
+            if len(group) == 1:
+
+                center_x = group[0][0]
+
+            else:
+                # first x0 + last x0 / 2
+                center_x = (
+                    group[0][0]
+                    + group[-1][0]
+                ) / 2
+
+            columns.append(
+                (text, center_x)
+            )
+
+        ranges = {}
+
+        for i, (column_name, center_x) in enumerate(columns):
+
+            if i == 0:
+
+                start = 0
 
             else:
 
-                end_x = start_x + 120
+                prev_center = columns[i - 1][1]
 
-            column_ranges[key] = (
-                round(start_x),
-                round(end_x)
+                start = (
+                    prev_center
+                    + center_x
+                ) / 2
+
+            if i == len(columns) - 1:
+
+                end = inf
+
+            else:
+
+                next_center = columns[i + 1][1]
+
+                end = (
+                    center_x
+                    + next_center
+                ) / 2
+
+            ranges[column_name] = (
+                round(start, 2),
+                round(end, 2) if end != inf else inf
             )
 
-        return column_ranges
+        return ranges
 
     def get_column(self, mid_x):
         for column, (start, end) in self.COLUMN_RANGES.items():
