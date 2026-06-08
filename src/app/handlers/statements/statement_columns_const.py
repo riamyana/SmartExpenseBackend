@@ -21,7 +21,8 @@ WITHDRAWAL_KEYWORDS = [
     "withdraw",
     "withdrawal",
     "debit",
-    "dr"
+    "dr",
+    "Amount"
 ]
 
 DEPOSIT_KEYWORDS = [

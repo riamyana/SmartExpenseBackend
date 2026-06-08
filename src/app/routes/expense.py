@@ -24,7 +24,8 @@ def add_expense(expense: ExpenseModel):
 
     new_expense = Expense(
         transaction_date=expense.transaction_date,
-        amount=expense.amount,
+        withdrawal=expense.withdrawal if expense.withdrawal else 0,
+        deposit=expense.deposit if expense.deposit else 0,
         description=expense.description,
         # TODO: Update Foreign keys for category, source, merchant, etc.
         category=None,
@@ -77,7 +78,8 @@ def update_expense_by_id(id: int, expenseRequest: ExpenseModel):
             raise HTTPException(status_code=404, detail="Expense not found")
 
         expense.transaction_date = expenseRequest.transaction_date
-        expense.amount = expenseRequest.amount
+        expense.withdrawal = expenseRequest.withdrawal if expenseRequest.withdrawal else 0
+        expense.deposit = expenseRequest.deposit if expenseRequest.deposit else 0
         expense.description = expenseRequest.description
         expense.category_id = expenseRequest.category_id
         expense.source_id = expenseRequest.source_id
@@ -102,7 +104,8 @@ def upload_csv(file: UploadFile = File(...)):
     for row in csv_reader:
         expense = Expense(
             transaction_date=datetime.strptime(row["date"], "%Y-%m-%d"),
-            amount=row["amount"],
+            withdrawal=float(row["amount"]) if row["amount"] else 0,
+            deposit=0,
             description=row["description"],
             # TODO: Update Foreign keys for category, source, merchant, etc.
             category=None,
@@ -133,10 +136,22 @@ def upload_statements(file: UploadFile = File(...), session: Session = Depends(g
 
     return response.transactions
 
-# @router.post("/statements/confirm")
-# def confirm_import(data: List[TransactionModel]):
-#     # save to DB
-#     return {"success": True}
+@router.post("/save")
+def save_expenses(data: List[TransactionModel], session: Session = Depends(get_db)):
+    for transaction in data:
+        new_category = Expense(
+            transaction_date=transaction.transaction_date,
+            withdrawal=transaction.withdrawal if transaction.withdrawal else 0,
+            deposit=transaction.deposit if transaction.deposit else 0,
+            description=transaction.description,
+            category_id=transaction.category,
+            source_id=None,
+            merchant_id=None
+        )
+        session.add(new_category)
+
+    session.commit()
+    return {"success": True}
 
 @router.get("/yearly")
 def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):
@@ -162,7 +177,8 @@ def get_yearly_expenses(year: int, page: int = 1, limit: int = 10):
         ExpenseModel(
             id=e.id,
             transaction_date=e.transaction_date,
-            amount=e.amount,
+            withdrawal=e.withdrawal if e.withdrawal else 0,
+            deposit=e.deposit if e.deposit else 0,
             description=e.description,
             # TODO: Update Foreign keys for category, source, merchant, etc.
             category_id=None,

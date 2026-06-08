@@ -8,7 +8,8 @@ class Expense(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     transaction_date = Column(DateTime)
-    amount = Column(Float)
+    withdrawal = Column(Float)
+    deposit = Column(Float)
     description = Column(String)
     category_id = Column(Integer, ForeignKey("category.id"), nullable=True)
     source_id = Column(Integer, ForeignKey("source.id"), nullable=True)
