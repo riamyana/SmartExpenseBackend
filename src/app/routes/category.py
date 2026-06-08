@@ -19,7 +19,7 @@ def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_
 
     session.add(new_category)
     session.commit()
-    session.refresh(new_category)
+    # session.refresh(new_category)
 
     return new_category
 

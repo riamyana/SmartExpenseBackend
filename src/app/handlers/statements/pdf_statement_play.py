@@ -44,7 +44,56 @@ class PDFStatementPlay(StatementBase):
         "credit": DEPOSIT_KEYWORDS,
         "balance": BALANCE_KEYWORDS,
     }
-        
+    
+    CATEGORY_KEYWORDS = {
+        "Food": (
+            "restaurant", "cafe", "coffee", "food", "swiggy", "zomato",
+            "domino", "pizza", "hotel", "bakery", "grocery", "supermarket"
+        ),
+        "Travel": (
+            "uber", "ola", "taxi", "metro", "rail", "irctc", "flight", "rickshaw",
+            "airline", "fuel", "petrol", "diesel", "parking", "toll", "bus"
+        ),
+        "Shopping": (
+            "amazon", "flipkart", "myntra", "shop", "store", "retail",
+            "mall", "market", "purchase"
+        ),
+        "Bills": (
+            "electricity", "water", "gas", "utility", "bill", "recharge",
+            "mobile", "broadband", "internet", "dth", "rent", "emi"
+        ),
+        "Salary": ("salary", "payroll", "wages"),
+        "Investment": (
+            "mutual fund", "sip", "stock", "equity", "broker", "zerodha",
+            "groww", "upstox", "dividend", "interest", "fd", "deposit"
+        ),
+        "Health": (
+            "hospital", "clinic", "medical", "medicine", "pharmacy",
+            "doctor", "health", "diagnostic"
+        ),
+        "Entertainment": (
+            "movie", "cinema", "netflix", "prime video", "hotstar",
+            "spotify", "bookmyshow", "game"
+        ),
+        "Transfer": (
+            "transfer", "neft", "imps", "rtgs", "upi", "atm", "cash",
+            "withdrawal", "self", "wallet"
+        ),
+    }
+
+    FALLBACK_CATEGORY_IDS = {
+        "Food": 1,
+        "Travel": 2,
+        "Shopping": 3,
+        "Bills": 4,
+        "Salary": 5,
+        "Investment": 6,
+        "Health": 7,
+        "Entertainment": 8,
+        "Transfer": 9,
+        "Other": 10,
+    }
+
     def process(self) -> StatementResponse:
         # with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         #     tmp.write(self.request.file.file.read())
@@ -341,6 +390,8 @@ class PDFStatementPlay(StatementBase):
         transactions = []
 
         id = 0
+        category_ids = self.get_category_ids()
+
         for idx, record in enumerate(records, start=1):
 
             transaction = self.build_transaction_model(
@@ -352,6 +403,12 @@ class PDFStatementPlay(StatementBase):
             if transaction.transaction_date is not None:
                 transaction.id = id
                 transactions.append(transaction)
+                transaction.category = self.detect_category(
+                    description=transaction.description,
+                    withdrawal=transaction.withdrawal,
+                    deposit=transaction.deposit,
+                    category_ids=category_ids
+                )
                 id += 1
 
 
@@ -386,6 +443,30 @@ class PDFStatementPlay(StatementBase):
                 continue
 
         return None
+
+    def get_category_ids(self):
+        ids = dict(self.FALLBACK_CATEGORY_IDS)
+        categories = self.session.query(Category.id, Category.name).all()
+        ids.update({name: category_id for category_id, name in categories})
+        return ids
+
+    def detect_category(self, description, withdrawal, deposit, category_ids):
+        text = str(description).lower()
+
+        if deposit and deposit > 0 and any(keyword in text for keyword in self.CATEGORY_KEYWORDS["Salary"]):
+            return category_ids["Salary"]
+
+        for category, keywords in self.CATEGORY_KEYWORDS.items():
+            if category == "Salary":
+                continue
+
+            if any(keyword in text for keyword in keywords):
+                return category_ids[category]
+
+        if deposit and deposit > 0:
+            return category_ids["Salary"]
+
+        return category_ids["Other"]
 
     def build_transaction_model(
         self,

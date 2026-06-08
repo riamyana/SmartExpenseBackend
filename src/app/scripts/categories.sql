@@ -1,3 +1,26 @@
+CREATE TABLE IF NOT EXISTS public.category
+(
+    id integer NOT NULL DEFAULT nextval('category_id_seq'::regclass),
+    name character varying COLLATE pg_catalog."default",
+    description character varying COLLATE pg_catalog."default",
+    is_system integer,
+    created_at timestamp without time zone,
+    CONSTRAINT category_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.category
+    OWNER to postgres;
+-- Index: ix_category_id
+
+-- DROP INDEX IF EXISTS public.ix_category_id;
+
+CREATE INDEX IF NOT EXISTS ix_category_id
+    ON public.category USING btree
+    (id ASC NULLS LAST)
+    TABLESPACE pg_default;
+
 INSERT INTO category (name, description, is_system, created_at)
 VALUES
 ('Food', 'Expenses related to food and dining', 1, NOW()),
