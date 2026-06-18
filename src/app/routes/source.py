@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.db.database import SessionLocal
+from app.core.database import SessionLocal
 
 from app.models.source import SourceModel
 from app.db.source import Source
