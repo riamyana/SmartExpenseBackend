@@ -5,7 +5,11 @@ CREATE TABLE IF NOT EXISTS public.category
     description character varying COLLATE pg_catalog."default",
     is_system integer,
     created_at timestamp without time zone,
-    CONSTRAINT category_pkey PRIMARY KEY (id)
+    CONSTRAINT category_pkey PRIMARY KEY (id),
+    CONSTRAINT expenses_category_id_fkey FOREIGN KEY (category_id)
+        REFERENCES public.user (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
 )
 
 TABLESPACE pg_default;

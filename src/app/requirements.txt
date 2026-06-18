@@ -5,3 +5,4 @@ python-multipart==0.0.9
 tabula-py==2.10.0
 pandas==3.0.2
 pdfplumber==0.11.9
+pyjwt==2.13.0

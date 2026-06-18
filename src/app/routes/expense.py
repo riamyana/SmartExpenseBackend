@@ -8,7 +8,7 @@ from app.handlers.statements.statement_base import StatementModel
 from app.handlers.statements.statement_factory import get_statement_handler
 from app.models.expense import ExpenseModel
 from app.db.expense import Expense
-from app.db.database import SessionLocal, get_db
+from app.core.database import SessionLocal, get_db
 import csv
 from sqlalchemy.orm import Session
 

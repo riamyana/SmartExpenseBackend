@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime
 from datetime import datetime
-from app.db.database import Base
+from app.core.database import Base
 from sqlalchemy.orm import relationship
 
 class Budget(Base):

@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from app.db.database import SessionLocal, get_db
+from app.core.database import SessionLocal, get_db
 
 from app.db.budget import Budget
 from app.models.budget import BudgetModel
