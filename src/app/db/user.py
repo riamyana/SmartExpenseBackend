@@ -15,3 +15,4 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     category = relationship("Category", back_populates="user")
+    expenses = relationship("Expense", back_populates="user")

@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
-from uuid import uuid4
 
 
 class Category(Base):

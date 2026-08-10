@@ -403,7 +403,7 @@ class PDFStatementPlay(StatementBase):
             if transaction.transaction_date is not None:
                 transaction.id = id
                 transactions.append(transaction)
-                transaction.category = self.detect_category(
+                transaction.category_id = self.detect_category(
                     description=transaction.description,
                     withdrawal=transaction.withdrawal,
                     deposit=transaction.deposit,
@@ -565,7 +565,7 @@ class PDFStatementPlay(StatementBase):
         return TransactionModel(
             id=id,
             date=data["date"],
-            category=data["category"],
+            category_id=data["category"],
             description=data["description"],
             withdrawal=data["withdrawal"],
             deposit=data["deposit"],
