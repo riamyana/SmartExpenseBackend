@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user, get_db_user
 from app.db.category import Category
 from app.models.category import CategoryModel
-from app.models.current_user import User
+from app.models.user import UserModel
 
 router = APIRouter(prefix="/category", tags=["Categories"])
 
 @router.post("")
-def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_db), current_user: User = Depends(get_db_user)):
+def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_db), current_user: UserModel = Depends(get_db_user)):
     new_category = Category(
         name=categoryRequest.name,
         description=categoryRequest.description,
@@ -27,7 +27,7 @@ def add_category(categoryRequest: CategoryModel, session: Session = Depends(get_
     return new_category
 
 @router.get("/{id}")
-def get_category_by_id(id: int, session: Session = Depends(get_db), current_user: User = Depends(get_db_user)):
+def get_category_by_id(id: int, session: Session = Depends(get_db), current_user: UserModel = Depends(get_db_user)):
     category = session.get(Category, id)
 
     if not category:
@@ -39,7 +39,7 @@ def get_category_by_id(id: int, session: Session = Depends(get_db), current_user
     return category
 
 @router.get("", response_model=List[CategoryModel])
-def get_all_category(session: Session = Depends(get_db), current_user: User = Depends(get_db_user)):
+def get_all_category(session: Session = Depends(get_db), current_user: UserModel = Depends(get_db_user)):
     categories = session.query(Category).filter((Category.user_id == current_user.id) | (Category.is_system == 1)).all()
 
     if not categories:
@@ -56,7 +56,7 @@ def get_all_category(session: Session = Depends(get_db), current_user: User = De
     ]
 
 @router.delete("/{id}")
-def delete_category_by_id(id: int, session: Session = Depends(get_db), current_user: User = Depends(get_db_user)):
+def delete_category_by_id(id: int, session: Session = Depends(get_db), current_user: UserModel = Depends(get_db_user)):
     category = session.get(Category, id)
 
     if not category:
@@ -74,7 +74,7 @@ def delete_category_by_id(id: int, session: Session = Depends(get_db), current_u
     return category
 
 @router.put("/{id}")
-def update_category_by_id(id: int, categoryRequest: CategoryModel, session: Session = Depends(get_db), current_user: User = Depends(get_db_user)):
+def update_category_by_id(id: int, categoryRequest: CategoryModel, session: Session = Depends(get_db), current_user: UserModel = Depends(get_db_user)):
     category = session.get(Category, id)
 
     if not category:

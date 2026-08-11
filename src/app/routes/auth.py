@@ -3,7 +3,7 @@ import jwt
 from app.core.database import SessionLocal
 
 from app.core.security import get_current_user
-from app.models.current_user import User
+from app.models.user import UserModel
 from app.models.source import SourceModel
 from app.db.source import Source
 
@@ -24,5 +24,5 @@ def test_auth(request: Request):
     return payload
 
 @router.get("/me")
-async def me(current_user: User = Depends(get_current_user)):
+async def me(current_user: UserModel = Depends(get_current_user)):
     return current_user

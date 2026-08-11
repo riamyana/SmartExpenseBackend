@@ -2,11 +2,13 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Float, DateTime
 from app.core.database import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 
 class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column( UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
     transaction_date = Column(DateTime)
     withdrawal = Column(Float)
     deposit = Column(Float)
@@ -20,3 +22,4 @@ class Expense(Base):
     category = relationship("Category", back_populates="expenses")
     source = relationship("Source", back_populates="expenses")
     merchant = relationship("Merchant", back_populates="expenses")
+    user = relationship("User", back_populates="expenses")

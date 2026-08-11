@@ -37,3 +37,12 @@ CREATE INDEX IF NOT EXISTS ix_expenses_id
     ON public.expenses USING btree
     (id ASC NULLS LAST)
     TABLESPACE pg_default;
+
+ALTER TABLE expenses
+ADD COLUMN user_id UUID;
+
+ALTER TABLE expenses
+ADD CONSTRAINT fk_expenses_user
+FOREIGN KEY (user_id)
+REFERENCES "user"(id)
+ON DELETE CASCADE;
