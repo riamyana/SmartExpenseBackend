@@ -7,7 +7,7 @@ class CategoricalBudgetRecurring(BudgetBase):
         existing_recurrings = self.get_existing_recurring_budget()
 
         if existing_recurrings and self.is_categorical_budget_exceeds_total(existing_recurrings):
-            return BudgetResponse(success=False)
+            return BudgetResponse(success=False, message="The total of all recurring categorical budgets exceeds the total recurring budget.")
 
         budget = self.get_existing_category_recurring_budget()
         if budget:
