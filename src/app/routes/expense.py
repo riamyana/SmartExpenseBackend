@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 
 from app.models.transactions import TransactionModel
 from app.models.user import UserModel
-from app.models.user import UserModel
 from fastapi import Query
+from sqlalchemy import or_
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -169,27 +170,39 @@ def get_expenses(
     current_user: UserModel = Depends(get_db_user),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    year: int | None = Query(None),
-    month: int | None = Query(None, ge=1, le=12),
+    from_date: date | None = Query(None),
+    to_date: date | None = Query(None),
     category_id: int | None = Query(None),
-    search: str | None = Query(None)
+    search: str | None = Query(None),
 ):
-    if year is None:
-        year = datetime.now().year
-
-    start_date = datetime(year, 1, 1)
-    end_date = datetime(year + 1, 1, 1)
-
     offset = (page - 1) * page_size
 
-    expenses = (
-        session.query(Expense)
-        .filter(
-            Expense.transaction_date >= start_date,
-            Expense.transaction_date < end_date,
-            Expense.user_id == current_user.id,
-            Expense.category_id == category_id if category_id is not None else True,
+    query = session.query(Expense).filter(
+        Expense.user_id == current_user.id
+    )
+
+    if from_date:
+        query = query.filter(Expense.transaction_date >= from_date)
+
+    if to_date:
+        query = query.filter(Expense.transaction_date <= to_date)
+
+    if category_id is not None:
+        query = query.filter(Expense.category_id == category_id)
+
+    if search:
+        search = f"%{search}%"
+        query = query.filter(
+            or_(
+                Expense.description.ilike(search),
+                Category.name.ilike(search)
+            )
         )
+
+    total = query.count()
+
+    expenses = (
+        query.order_by(Expense.transaction_date.desc())
         .offset(offset)
         .limit(page_size)
         .all()
@@ -198,32 +211,24 @@ def get_expenses(
     data = []
     for e in expenses:
         category = session.get(Category, e.category_id)
-        data.append(ExpenseModel(
-            id=e.id,
-            transaction_date=e.transaction_date,
-            withdrawal=e.withdrawal if e.withdrawal else 0,
-            deposit=e.deposit if e.deposit else 0,
-            description=e.description,
-            category_id=e.category_id,
-            category_name=category.name if category else None,
-            source_id=e.source_id,
-            merchant_id=e.merchant_id
-        ))
-    
-    total = (
-        session.query(Expense)
-        .filter(
-            Expense.transaction_date >= start_date,
-            Expense.transaction_date < end_date,
-            Expense.user_id == current_user.id,
-            Expense.category_id == category_id if category_id is not None else True,
+
+        data.append(
+            ExpenseModel(
+                id=e.id,
+                transaction_date=e.transaction_date,
+                withdrawal=e.withdrawal or 0,
+                deposit=e.deposit or 0,
+                description=e.description,
+                category_id=e.category_id,
+                category_name=category.name if category else None,
+                source_id=e.source_id,
+                merchant_id=e.merchant_id,
+            )
         )
-        .count()
-    )
 
     return ExpenseResponse(
         total=total,
         page=page,
         page_size=page_size,
-        data=data
+        data=data,
     )

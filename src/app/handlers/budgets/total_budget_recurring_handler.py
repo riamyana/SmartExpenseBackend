@@ -15,9 +15,10 @@ class TotalBudgetRecurring(BudgetBase):
 
     def get_existing_total_monthly_recurring_budget(self):
         return self.session.query(Budget).filter(
-            Budget.month == self.budget_request.month,
+            Budget.month == None,
             Budget.category_id == None,
             Budget.is_recurring == True,
+            Budget.user_id == self.user_id,
         ).first()
 
     @property

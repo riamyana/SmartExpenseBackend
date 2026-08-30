@@ -8,6 +8,7 @@ from pydantic import Field
 from app.models.budget import BudgetModel
 from app.db.budget import Budget
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 
 
@@ -19,10 +20,11 @@ class BudgetResponse:
 
 
 class BudgetBase:
-    def __init__(self, session: Session, budget_request: BudgetModel):
+    def __init__(self, session: Session, budget_request: BudgetModel, user_id: UUID):
         self.session = session
         self.logger = logging.getLogger(__name__)
         self.budget_request = budget_request
+        self.user_id = user_id
         self.logger.debug(f"Processing {self.description}")
 
     @abstractmethod
@@ -84,6 +86,7 @@ class BudgetBase:
             month=self.budget_request.month,
             category_id=self.budget_request.category_id,
             is_recurring=self.budget_request.month is None,
+            user_id=self.user_id,
         )
 
         self.session.add(new_budget)
