@@ -4,7 +4,11 @@ from app.db.budget import Budget
 
 class TotalBudgetRecurring(BudgetBase):
     def execute(self) -> BudgetResponse:
-        existing_monthly = self.get_existing_total_monthly_recurring_budget()
+        existing_recurrings = self.get_existing_recurring_budget()
+        is_below_allocation, existing_monthly = self.is_total_budget_below_category_allocation(existing_recurrings)
+
+        if existing_recurrings and is_below_allocation:
+            return BudgetResponse(success=False, message="The total of all recurring categorical budgets exceeds the total recurring budget.")
 
         if existing_monthly:
             self.update_budget(existing_monthly)
