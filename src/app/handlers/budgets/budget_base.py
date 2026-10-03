@@ -78,7 +78,26 @@ class BudgetBase:
 
         self.logger.debug("Invalid total budget exceeded.")
         return True
-                    
+
+    def is_total_budget_below_category_allocation(self, existing: List[Budget]):
+        total_budget = self.budget_request.amount
+        total_categorical = 0
+        existing_monthly = None
+        for budget in existing:
+            if budget.month != self.budget_request.month:
+                continue
+
+            if budget.category_id is None and budget.id == self.budget_request.id:
+                existing_monthly = budget
+            else:
+                total_categorical += budget.amount
+
+        self.logger.debug(f"Total budget:{total_budget}, Total categorical: {total_categorical}.")
+        if total_budget >= total_categorical:
+            return False, existing_monthly
+
+        self.logger.debug("Invalid total budget exceeded.")
+        return True, existing_monthly
 
     def save_new_budget(self):
         new_budget = Budget(
